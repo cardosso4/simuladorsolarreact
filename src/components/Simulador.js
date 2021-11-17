@@ -1,40 +1,53 @@
-import React,{Component,useState} from "react";
+import React,{useState} from "react";
 import '../App.css';
 import axios from "axios";
+import logo from '../logo.svg';
 
-
-import { useTable } from "react-table";
 import {Button,Form,Image} from 'react-bootstrap';
 import {Container,Row,Col,Table} from 'react-bootstrap';
+
 
 export default function Simulador(){
 
     const [dados,setDados] = useState({parcelamento: []});
-    const handleSubmit = (e) => {
+    const [spinner, setSpinner] = useState(false);
+    const [tabela, setTabela] = useState(false);
+
+    const numberFormat = (value) =>
+        new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+    }).format(value);
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         const formData = new FormData(e.target);
         const dados = Object.fromEntries(formData);
-        console.log(dados);
 
         var cep = dados.cep.trim();
         var valor = String(Math.round(dados.valor_conta.replace(',','.')));
-        // var valor = dados.valor_conta;
         var tipo = dados.tipo.trim();
 
-        console.log(localStorage.getItem('token_acesso'));
+        setTabela(true);
+        setSpinner(true);
         var url = encodeURI('http://localhost:8000/api/consulta/'+cep+'/'+valor+'/'+tipo);
-        axios.get(
+        await axios.get(
             url,
             { headers: { 
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer: '+localStorage.getItem('token_acesso')
             }})
         .then((response) => {
-            if(response.status == 200){
+            if(response.status === 200){
                 setDados(response.data);
             }
+        }).catch((err) => {
+            console.log(err)
         });
+
+        setTabela(false);
+        setSpinner(false);
     }
 
     return(
@@ -52,7 +65,17 @@ export default function Simulador(){
                     </Form>
                 </Col>
             </Row>
-            <Row className="border boder-2 justify-content-md-center">
+            <Row style={spinner?{}:{ display: 'none' }} 
+            className="border boder-2 justify-content-md-center mx-auto text-center">
+                <Col xs={10} md={10} >
+                    <Image className="App-logo"
+                        width="250px" 
+                        height="250px" 
+                        src={logo}
+                        roundedCircle />
+                </Col>
+            </Row>
+            <Row className="border boder-2 justify-content-md-center" style={tabela?{ display: 'none' }:{}}>
                 <Col xs={10} md={10}>
                     <Table>
                         <tr>
@@ -62,23 +85,23 @@ export default function Simulador(){
                     </Table>
                     <Table striped bordered hover>
                         <thead>
-                            <tr>
-                                <th>Parcela</th>
-                                <th>taxa minina</th>
-                                <th>taxa maxima</th>
-                                <th>valor maximo</th>      
-                                <th>valor minimo</th>                            
+                            <tr className="text-center">
+                                <th>Parcelas</th>
+                                <th>Taxa minina</th>
+                                <th>Taxa maxima</th>
+                                <th>Valor maximo</th>      
+                                <th>Valor minimo</th>                            
                             </tr>
                         </thead>
                         <tbody>
                             {
                                 dados.parcelamento.map((dado, index) => (
-                                    <tr>
+                                    <tr className="text-end">
                                         <td key={'key-'+dado.parcelas+'_1'}> { dado.parcelas } </td>
                                         <td key={'key-'+dado.parcelas+'_2'}> { dado.taxa_minina } </td>
                                         <td key={'key-'+dado.parcelas+'_3'}> { dado.taxa_maxima } </td>
-                                        <td key={'key-'+dado.parcelas+'_4'}> { dado.valor_minimo } </td>
-                                        <td key={'key-'+dado.parcelas+'_5'}> { dado.valor_maximo } </td>
+                                        <td key={'key-'+dado.parcelas+'_4'}> { numberFormat(dado.valor_minimo) } </td>
+                                        <td key={'key-'+dado.parcelas+'_5'}> { numberFormat(dado.valor_maximo) } </td>
                                     </tr>
                                 ))
                             }
